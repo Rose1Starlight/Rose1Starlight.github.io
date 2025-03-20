@@ -12,6 +12,7 @@
     <!-- Bibliotecas para exportar PDF e imagem -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -467,20 +468,53 @@
     </div>        
     
     <script>
-        // Função para salvar como PDF
-        function saveAsPDF() {
-            const element = document.body; // Captura todo o body
-            html2canvas(element, {
-                scale: 2, // Aumenta a qualidade da imagem
-                useCORS: true, // Permite carregar imagens externas
-            }).then((canvas) => {
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jspdf.jsPDF('p', 'mm', 'a4'); // Cria um PDF no formato A4
-                const imgWidth = 210; // Largura do A4 em mm
-                const imgHeight = (canvas.height * imgWidth) / canvas.width; // Calcula a altura proporcional
-                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-                pdf.save('ficha_rpg.pdf'); // Salva o PDF
+        // Função para salvar como PDF com texto selecionável
+        async function saveAsPDF() {
+            const { PDFDocument, StandardFonts } = PDFLib;
+
+            // Cria um novo documento PDF
+            const pdfDoc = await PDFDocument.create();
+            const page = pdfDoc.addPage([595, 842]); // Tamanho A4 em pontos (595x842)
+
+            // Adiciona o conteúdo das caixas de texto ao PDF
+            const textAreas = document.querySelectorAll('.text-box textarea');
+            const inputs = document.querySelectorAll('.text-box-with-title .title, .text-box-with-title .content');
+
+            let yOffset = 800; // Posição inicial no PDF
+
+            textAreas.forEach(textarea => {
+                const text = textarea.value;
+                if (text) {
+                    page.drawText(text, {
+                        x: 50,
+                        y: yOffset,
+                        size: 12,
+                        font: await pdfDoc.embedFont(StandardFonts.Helvetica),
+                    });
+                    yOffset -= 20; // Espaçamento entre as linhas
+                }
             });
+
+            inputs.forEach(input => {
+                const text = input.value;
+                if (text) {
+                    page.drawText(text, {
+                        x: 50,
+                        y: yOffset,
+                        size: 12,
+                        font: await pdfDoc.embedFont(StandardFonts.Helvetica),
+                    });
+                    yOffset -= 20; // Espaçamento entre as linhas
+                }
+            });
+
+            // Salva o PDF
+            const pdfBytes = await pdfDoc.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'ficha_rpg.pdf';
+            link.click();
         }
 
         // Função para salvar como imagem
