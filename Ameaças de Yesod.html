@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ameaças de Yesod</title>
+    <!-- Links das fontes do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Eagle+Lake&family=Modern+Antiqua&family=Winky+Sans:ital,wght@0,300..900;1,300..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Modern+Antiqua&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Eagle+Lake&family=Modern+Antiqua&display=swap" rel="stylesheet">
+    <!-- Bibliotecas para exportar PDF e imagem -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-image: url('https://i.imgur.com/OAsa911.png'); /* Background fornecido */
+            background-size: 2100px 2970px; /* Tamanho do background */
+            background-repeat: no-repeat;
+            width: 2100px; /* Largura da área */
+            height: 2970px; /* Altura da área */
+            position: relative;
+            overflow: auto; /* Adiciona rolagem */
+        }
+
+        /* Estilo base para caixas de texto editáveis */
+        .text-box {
+            position: absolute;
+            background: transparent;
+            border: 1px dashed #000;
+            padding: 10px;
+            resize: both;
+            overflow: hidden;
+        }
+
+        .text-box textarea {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit; /* Herda a fonte da caixa de texto */
+            font-size: inherit; /* Herda o tamanho da fonte da caixa de texto */
+            color: inherit; /* Herda a cor da caixa de texto */
+            white-space: pre-wrap; /* Permite quebras de linha */
+            overflow: hidden; /* Esconde o texto que ultrapassa a caixa */
+        }
+
+        /* Estilo para caixas de texto centralizadas */
+        .centered-text textarea {
+            text-align: center; /* Centraliza o texto horizontalmente */
+            display: flex;
+            align-items: center; /* Centraliza o texto verticalmente */
+            justify-content: center;
+        }
+
+        /* Estilo base para textos fixos */
+        .fixed-text {
+            position: absolute;
+            background: transparent;
+            pointer-events: none; /* Impede interação */
+        }
+
+        /* Botões de controle */
+        .controls {
+            position: fixed;
+            top: 20px; /* Posiciona no topo da página */
+            right: 20px; /* Posiciona à direita */
+            display: flex;
+            gap: 10px;
+            z-index: 1000; /* Garante que fique acima de outros elementos */
+        }
+
+        .controls button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px; /* Bordas arredondadas */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Sombra para destacar */
+        }
+
+        .controls button.reset {
+            background: #ff0000;
+        }
+
+        /* Estilo para caixas de texto com título */
+        .text-box-with-title {
+            position: absolute;
+            background: transparent;
+            border: 1px dashed #000;
+            padding: 10px;
+            resize: both;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing, 10px); /* Espaçamento controlado por variável CSS */
+        }
+
+        .text-box-with-title .title {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+            text-align: left; /* Alinha o título à esquerda */
+        }
+
+        .text-box-with-title .content {
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            font-size: inherit;
+            color: inherit;
+            white-space: pre-wrap;
+            overflow: hidden;
+        }
+
+        /* Estilo para o contêiner de importação de imagem */
+        .image-import-container {
+            position: absolute;
+            background: transparent;
+            padding: 5px;
+            border: 1px dashed #000;
+            width: 1050px; /* Largura máxima */
+            height: 1400px; /* Altura máxima */
+        }
+
+        /* Estilo para a imagem exibida */
+        #image-preview {
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Impede que a imagem ultrapasse o contêiner */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #imported-image {
+            max-width: 100%;
+            max-height: 100%;
+            transition: transform 0.2s; /* Suaviza o redimensionamento */
+        }
+
+        /* Estilo para os botões de controle da imagem */
+        .image-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: -110px; /* Espaçamento inicial entre a imagem e os botões */
+        }
+
+        .image-controls button {
+            padding: 5px 10px;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .image-controls button.reset {
+            background: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Botões de controle no topo da página -->
+    <div class="controls">
+        <button onclick="saveAsPDF()">Salvar como PDF</button>
+        <button onclick="saveAsImage()">Salvar como Imagem</button>
+        <button onclick="resetTextFields()">Resetar Caixas de Texto</button>
+    </div>
+
+    <!-- Nome da Criatura 1 -->
+    <div class="text-box auto-adjust" style="left: 70px; top: 160px; width: 900px; height: 75px; font-family: 'Eagle Lake', sans-serif; font-size: 52px; color: #000000;">
+        <textarea placeholder="Nome da Criatura Aqui..."></textarea>
+    </div>
+
+    <!-- Descrição da Criatura -->
+    <div class="text-box auto-adjust" style="left: 70px; top: 270px; width: 880px; height: 1520px; font-family: 'Winky Sans', sans-serif; font-size: 33px; color: #000000;">
+        <textarea placeholder="Digite sua descrição aqui..."></textarea>
+    </div>
+    
+    <!-- Nome da Criatura 2 -->
+    <div class="text-box auto-adjust" style="left: 100px; top: 1850px; width: 650px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 50px; color: #000000;">
+        <textarea placeholder="Nome da Criatura Aqui..."></textarea>
+    </div>
+    
+    <!-- ND da Criatura 1 -->
+    <div class="text-box" style="left: 890px; top: 1843px; width: 70px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 50px; color: #000000;">
+        <textarea placeholder="..."></textarea>
+    </div>
+    
+    <!-- Tipo da Criatura -->
+    <div class="text-box centered-text" style="left: 105px; top: 1965px; width: 210px; height: 55px; font-family: 'Winky Sans', sans-serif; font-size: 40px; color: #000000;">
+        <textarea placeholder="Morto-Vivo"></textarea>
+    </div>
+    
+    <!-- Tamanho da Criatura -->
+    <div class="text-box centered-text" style="left: 420px; top: 1965px; width: 210px; height: 55px; font-family: 'Winky Sans', sans-serif; font-size: 40px; color: #000000;">
+        <textarea placeholder="Colossal"></textarea>
+    </div>
+
+    <!-- Papel da Criatura -->
+    <div class="text-box centered-text" style="left: 720px; top: 1965px; width: 200px; height: 55px; font-family: 'Winky Sans', sans-serif; font-size: 40px; color: #000000;">
+        <textarea placeholder="Especial"></textarea>
+    </div>
+    
+    <!-- Iniciativa preencher -->
+    <div class="text-box centered-text" style="left: 167px; top: 2069px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Defesa preencher -->
+    <div class="text-box centered-text" style="left: 480px; top: 2069px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="00"></textarea>
+    </div>
+
+    <!-- Percepção preencher -->
+    <div class="text-box centered-text" style="left: 780px; top: 2069px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Vontade preencher -->
+    <div class="text-box centered-text" style="left: 167px; top: 2185px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Reflexos preencher -->
+    <div class="text-box centered-text" style="left: 480px; top: 2185px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+
+    <!-- Fortitude preencher -->
+    <div class="text-box centered-text" style="left: 780px; top: 2185px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Pontos de Vida preencher -->
+    <div class="text-box centered-text" style="left: 260px; top: 2320px; width: 140px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="0000"></textarea>
+    </div>
+    
+    <!-- Pontos de Mana Preencher -->
+    <div class="text-box centered-text" style="left: 665px; top: 2320px; width: 140px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="0000"></textarea>
+    </div>
+    
+    <!-- Deslocamento preencher -->
+    <div class="text-box centered-text" style="left: 100px; top: 2442px; width: 400px; height: 35px; font-family: 'IBM Plex Sans', sans-serif; font-size: 28px; color: #000000;">
+        <textarea placeholder="Terrestre 12m, Nado 15m"></textarea>
+    </div>
+    
+    <!-- Perícias Preencher -->
+    <div class="text-box centered-text" style="left: 568px; top: 2442px; width: 395px; height: 35px; font-family: 'IBM Plex Sans', sans-serif; font-size: 28px; color: #000000;">
+        <textarea placeholder="Atletismo +15, Acrobacia +20"></textarea>
+    </div>
+    
+    <!-- Força preencher -->
+    <div class="text-box centered-text" style="left: 167px; top: 2538px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Destreza preencher -->
+    <div class="text-box centered-text" style="left: 480px; top: 2538px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="00"></textarea>
+    </div>
+
+    <!-- Constituição preencher -->
+    <div class="text-box centered-text" style="left: 780px; top: 2538px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Inteligência preencher -->
+    <div class="text-box centered-text" style="left: 167px; top: 2650px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Sabedoria preencher -->
+    <div class="text-box centered-text" style="left: 480px; top: 2650px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+
+    <!-- Carisma preencher -->
+    <div class="text-box centered-text" style="left: 780px; top: 2650px; width: 90px; height: 55px; font-family: 'IBM Plex Sans', sans-serif; font-size: 45px; color: #000000;">
+        <textarea placeholder="+0"></textarea>
+    </div>
+    
+    <!-- Imunidades preencher -->
+    <div class="text-box centered-text" style="left: 105px; top: 2770px; width: 855px; height: 35px; font-family: 'IBM Plex Sans', sans-serif; font-size: 28px; color: #000000;">
+        <textarea placeholder="acertos críticos, efeitos de metabolismo, metamorfose e paralisia"></textarea>
+    </div>
+    
+    <!-- Resistências preencher -->
+    <div class="text-box centered-text" style="left: 105px; top: 2860px; width: 855px; height: 35px; font-family: 'IBM Plex Sans', sans-serif; font-size: 28px; color: #000000;">
+        <textarea placeholder="medo +5, magia +3, efeitos mentais +5, veneno +10"></textarea>
+    </div>
+    
+    <!-- ND -->
+    <div class="fixed-text" style="left: 825px; top: 1865px; font-family: 'Modern Antiqua', sans-; font-size: 45px; color: #000000;">
+        ND
+    </div>
+
+    <!-- Tipo -->
+    <div class="fixed-text" style="left: 180px; top: 1935px; font-family: 'Modern Antiqua', sans-; font-size: 40px; color: #000000;">
+        Tipo
+    </div>
+
+    <!-- Tamanho -->
+    <div class="fixed-text" style="left: 450px; top: 1935px; font-family: 'Modern Antiqua', sans-serif; font-size: 40px; color: #000000;">
+        Tamanho
+    </div>
+        
+    <!-- Papel -->
+    <div class="fixed-text" style="left: 770px; top: 1935px; font-family: 'Modern Antiqua', sans-serif; font-size: 40px; color: #000000;">
+        Papel
+    </div>
+    
+    <!-- iniciativa -->
+    <div class="fixed-text" style="left: 145px; top: 2040px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Iniciativa 
+    </div>
+
+    <!-- Defesa -->
+    <div class="fixed-text" style="left: 480px; top: 2040px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Defesa
+    </div>
+        
+    <!-- Percepção -->
+    <div class="fixed-text" style="left: 750px; top: 2040px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Percepção
+    </div>
+    
+    <!-- Vontade -->
+    <div class="fixed-text" style="left: 155px; top: 2155px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Vontade
+    </div> 
+    
+    <!-- Reflexos -->
+    <div class="fixed-text" style="left: 465px; top: 2155px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Reflexos
+    </div>
+        
+    <!-- Fortitude -->
+    <div class="fixed-text" style="left: 755px; top: 2155px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Fortitude
+    </div>
+    
+     <!-- Pontos de Vida -->
+    <div class="fixed-text" style="left: 220px; top: 2280px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Pontos de Vida
+    </div>
+    
+    <!-- Pontos de Mana -->
+    <div class="fixed-text" style="left: 615px; top: 2280px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Pontos de Mana
+    </div>
+    
+    <!-- Deslocamento -->
+    <div class="fixed-text" style="left: 200px; top: 2420px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Deslocamento
+    </div>
+    
+    <!-- Perícias -->
+    <div class="fixed-text" style="left: 700px; top: 2420px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Perícias
+    </div>
+    
+    <!-- Força -->
+    <div class="fixed-text" style="left: 175px; top: 2510px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Força
+    </div> 
+    
+    <!-- Destreza -->
+    <div class="fixed-text" style="left: 460px; top: 2505px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Destreza
+    </div>
+        
+    <!-- Constituição -->
+    <div class="fixed-text" style="left: 725px; top: 2510px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Constituição
+    </div>
+    
+    <!-- Inteligência -->
+    <div class="fixed-text" style="left: 125px; top: 2620px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Inteligência
+    </div> 
+    
+    <!-- Sabedoria -->
+    <div class="fixed-text" style="left: 450px; top: 2620px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Sabedoria
+    </div>
+        
+    <!-- Carisma -->
+    <div class="fixed-text" style="left: 760px; top: 2620px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Carisma
+    </div>
+    
+    <!-- Imunidades -->
+    <div class="fixed-text" style="left: 430px; top: 2740px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Imunidades
+    </div>
+    
+    <!-- Resistências -->
+    <div class="fixed-text" style="left: 430px; top: 2830px; font-family: 'Modern Antiqua', sans-serif; font-size: 35px; color: #000000;">
+        Resistências
+    </div> 
+    
+    <!-- Habilidade 1 -->
+    <div class="text-box-with-title" style="left: 1050px; top: 1860px; width: 930px; height: 150px;">
+        <input class="title" placeholder="Habilidade 1" style="font-family: 'IBM Plex Sans', sans-serif; font-size: 33px; color: #000000;">
+        <textarea class="content" placeholder="Conteúdo Aqui..." style="font-family: 'Winky Sans', sans-serif; font-size: 25px; color: #000000;"></textarea>
+    </div>
+    
+    <!-- Habilidade 2 -->
+    <div class="text-box-with-title" style="left: 1050px; top: 2040px; width: 930px; height: 150px;">
+        <input class="title" placeholder="Habilidade 2" style="font-family: 'IBM Plex Sans', sans-serif; font-size: 33px; color: #000000;">
+        <textarea class="content" placeholder="Conteúdo Aqui..." style="font-family: 'Winky Sans', sans-serif; font-size: 25px; color: #000000;"></textarea>
+    </div>
+    
+    <!-- Habilidade 3 -->
+    <div class="text-box-with-title" style="left: 1050px; top: 2220px; width: 930px; height: 150px;">
+        <input class="title" placeholder="Habilidade 3" style="font-family: 'IBM Plex Sans', sans-serif; font-size: 33px; color: #000000;">
+        <textarea class="content" placeholder="Conteúdo Aqui..." style="font-family: 'Winky Sans', sans-serif; font-size: 25px; color: #000000;"></textarea>
+    </div>
+    
+    <!-- Habilidade 4 -->
+    <div class="text-box-with-title" style="left: 1050px; top: 2400px; width: 930px; height: 150px;">
+        <input class="title" placeholder="Habilidade 4" style="font-family: 'IBM Plex Sans', sans-serif; font-size: 33px; color: #000000;">
+        <textarea class="content" placeholder="Conteúdo Aqui..." style="font-family: 'Winky Sans', sans-serif; font-size: 25px; color: #000000;"></textarea>
+    </div>
+    
+    <!-- Habilidade 5 -->
+    <div class="text-box-with-title" style="left: 1050px; top: 2580px; width: 930px; height: 150px;">
+        <input class="title" placeholder="Habilidade 5" style="font-family: 'IBM Plex Sans', sans-serif; font-size: 33px; color: #000000;">
+        <textarea class="content" placeholder="Conteúdo Aqui..." style="font-family: 'Winky Sans', sans-serif; font-size: 25px; color: #000000;"></textarea>
+    </div>
+
+    <!-- Contêiner para importar imagem -->
+    <div class="image-import-container" style="left: 1000px; top: 270px;">
+        <input type="text" id="image-url" placeholder="Cole a URL da imagem aqui..." style="width: 850px; padding: 5px;">
+        <button onclick="loadImageFromURL()">Carregar Imagem da URL</button>
+        <br><br>
+        <input type="file" id="image-upload" accept="image/*" style="display: none;">
+        <button onclick="document.getElementById('image-upload').click()">Carregar Imagem do Computador</button>
+        <br><br>
+        <div id="image-preview" style="margin-top: 10px;">
+            <img id="imported-image" src="" alt="Imagem Carregada" style="max-width: 100%; max-height: 100%;">
+        </div>
+        <br>
+        <div class="image-controls">
+            <button onclick="increaseImageSize()">Aumentar Tamanho da Imagem</button>
+            <button onclick="decreaseImageSize()">Diminuir Tamanho da Imagem</button>
+        </div>
+    </div>        
+    
+    <script>
+        // Função para salvar como PDF
+        function saveAsPDF() {
+            const element = document.body; // Captura todo o body
+            html2canvas(element, {
+                scale: 2, // Aumenta a qualidade da imagem
+                useCORS: true, // Permite carregar imagens externas
+            }).then((canvas) => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jspdf.jsPDF('p', 'mm', 'a4'); // Cria um PDF no formato A4
+                const imgWidth = 210; // Largura do A4 em mm
+                const imgHeight = (canvas.height * imgWidth) / canvas.width; // Calcula a altura proporcional
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                pdf.save('ficha_rpg.pdf'); // Salva o PDF
+            });
+        }
+
+        // Função para salvar como imagem
+        function saveAsImage() {
+            const element = document.body; // Captura todo o body
+            html2canvas(element, {
+                scale: 2, // Aumenta a qualidade da imagem
+                useCORS: true, // Permite carregar imagens externas
+            }).then((canvas) => {
+                const link = document.createElement('a');
+                link.href = canvas.toDataURL('image/png');
+                link.download = 'ficha_rpg.png'; // Nome do arquivo de imagem
+                link.click();
+            });
+        }
+
+        // Função para resetar as caixas de texto editáveis
+        function resetTextFields() {
+            const textAreas = document.querySelectorAll('.text-box textarea');
+            const inputs = document.querySelectorAll('.text-box-with-title .title, .text-box-with-title .content');
+
+            // Limpa os textareas
+            textAreas.forEach(textarea => {
+                textarea.value = '';
+            });
+
+            // Limpa os inputs
+            inputs.forEach(input => {
+                input.value = '';
+            });
+
+            alert('Caixas de texto resetadas com sucesso!');
+        }
+
+        // Função para carregar imagem da URL
+        function loadImageFromURL() {
+            const imageUrl = document.getElementById('image-url').value;
+            const importedImage = document.getElementById('imported-image');
+
+            if (imageUrl) {
+                importedImage.src = imageUrl;
+            } else {
+                alert("Por favor, insira uma URL válida.");
+            }
+        }
+
+        // Função para carregar imagem do computador
+        document.getElementById('image-upload').addEventListener('change', function (event) {
+            const file = event.target.files[0];
+            const importedImage = document.getElementById('imported-image');
+
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    importedImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            } else {
+                alert("Por favor, selecione um arquivo de imagem válido.");
+            }
+        });
+
+        // Função para aumentar o tamanho da imagem
+        function increaseImageSize() {
+            const importedImage = document.getElementById('imported-image');
+            let currentWidth = importedImage.clientWidth;
+            let currentHeight = importedImage.clientHeight;
+            importedImage.style.width = `${currentWidth * 1.1}px`; // Aumenta 10%
+            importedImage.style.height = `${currentHeight * 1.1}px`; // Aumenta 10%
+        }
+
+        // Função para diminuir o tamanho da imagem
+        function decreaseImageSize() {
+            const importedImage = document.getElementById('imported-image');
+            let currentWidth = importedImage.clientWidth;
+            let currentHeight = importedImage.clientHeight;
+            importedImage.style.width = `${currentWidth * 0.9}px`; // Diminui 10%
+            importedImage.style.height = `${currentHeight * 0.9}px`; // Diminui 10%
+        }
+    </script>
+</body>
+</html>
