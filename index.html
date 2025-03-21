@@ -173,11 +173,16 @@
         .image-controls button.reset {
             background: #ff0000;
         }
+
+        /* Classe para esconder elementos ao exportar */
+        .hide-on-export {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <!-- Botões de controle no topo da página -->
-    <div class="controls">
+    <div class="controls hide-on-export">
         <button onclick="saveAsPDF()">Salvar como PDF</button>
         <button onclick="saveAsImage()">Salvar como Imagem</button>
         <button onclick="resetTextFields()">Resetar Caixas de Texto</button>
@@ -449,7 +454,7 @@
     </div>
 
     <!-- Contêiner para importar imagem -->
-    <div class="image-import-container" style="left: 1000px; top: 270px;">
+    <div class="image-import-container hide-on-export" style="left: 1000px; top: 270px;">
         <input type="text" id="image-url" placeholder="Cole a URL da imagem aqui..." style="width: 850px; padding: 5px;">
         <button onclick="loadImageFromURL()">Carregar Imagem da URL</button>
         <br><br>
@@ -472,6 +477,10 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4'); // Cria um PDF no formato A4
 
+            // Oculta elementos desnecessários
+            document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.text-box').forEach(el => el.style.border = 'none');
+
             // Captura o conteúdo da página usando html2canvas
             html2canvas(document.body, {
                 scale: 2, // Aumenta a qualidade da imagem
@@ -484,11 +493,19 @@
                 // Adiciona a imagem ao PDF
                 doc.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
                 doc.save('ficha_rpg.pdf'); // Salva o PDF
+
+                // Restaura os elementos ocultos
+                document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = '');
+                document.querySelectorAll('.text-box').forEach(el => el.style.border = '1px dashed #000');
             });
         }
 
         // Função para salvar como imagem
         function saveAsImage() {
+            // Oculta elementos desnecessários
+            document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.text-box').forEach(el => el.style.border = 'none');
+
             html2canvas(document.body, {
                 scale: 2, // Aumenta a qualidade da imagem
                 useCORS: true, // Permite carregar imagens externas
@@ -497,6 +514,10 @@
                 link.href = canvas.toDataURL('image/png');
                 link.download = 'ficha_rpg.png'; // Nome do arquivo de imagem
                 link.click();
+
+                // Restaura os elementos ocultos
+                document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = '');
+                document.querySelectorAll('.text-box').forEach(el => el.style.border = '1px dashed #000');
             });
         }
 
