@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Modern+Antiqua&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Eagle+Lake&family=Modern+Antiqua&display=swap" rel="stylesheet">
-    <!-- Bibliotecas para exportar PDF e imagem -->
+    <!-- Bibliotecas para exportar PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
@@ -182,9 +182,8 @@
 </head>
 <body>
     <!-- Botões de controle no topo da página -->
-    <div class="controls hide-on-export">
+    <div class="controls">
         <button onclick="saveAsPDF()">Salvar como PDF</button>
-        <button onclick="saveAsImage()">Salvar como Imagem</button>
         <button onclick="resetTextFields()">Resetar Caixas de Texto</button>
     </div>
 
@@ -477,9 +476,10 @@
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4'); // Cria um PDF no formato A4
 
-            // Oculta elementos desnecessários
-            document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = 'none');
+            // Oculta elementos desnecessários e remove bordas
+            document.querySelectorAll('.controls').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.text-box').forEach(el => el.style.border = 'none');
+            document.querySelectorAll('.image-import-container').forEach(el => el.style.border = 'none');
 
             // Captura o conteúdo da página usando html2canvas
             html2canvas(document.body, {
@@ -494,30 +494,10 @@
                 doc.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
                 doc.save('ficha_rpg.pdf'); // Salva o PDF
 
-                // Restaura os elementos ocultos
-                document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = '');
+                // Restaura os elementos ocultos e as bordas
+                document.querySelectorAll('.controls').forEach(el => el.style.display = '');
                 document.querySelectorAll('.text-box').forEach(el => el.style.border = '1px dashed #000');
-            });
-        }
-
-        // Função para salvar como imagem
-        function saveAsImage() {
-            // Oculta elementos desnecessários
-            document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.text-box').forEach(el => el.style.border = 'none');
-
-            html2canvas(document.body, {
-                scale: 2, // Aumenta a qualidade da imagem
-                useCORS: true, // Permite carregar imagens externas
-            }).then((canvas) => {
-                const link = document.createElement('a');
-                link.href = canvas.toDataURL('image/png');
-                link.download = 'ficha_rpg.png'; // Nome do arquivo de imagem
-                link.click();
-
-                // Restaura os elementos ocultos
-                document.querySelectorAll('.hide-on-export').forEach(el => el.style.display = '');
-                document.querySelectorAll('.text-box').forEach(el => el.style.border = '1px dashed #000');
+                document.querySelectorAll('.image-import-container').forEach(el => el.style.border = '1px dashed #000');
             });
         }
 
